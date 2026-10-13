@@ -15,7 +15,6 @@
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-2">
 
-  <!-- UI 상단 -->
   <div class="w-full max-w-6xl flex justify-between items-center mb-2 px-4 text-xs md:text-sm">
     <div class="flex gap-4 items-center">
       <span class="text-red-400 font-bold">❤️ 체력: <span id="hp-text">300/300</span></span>
@@ -27,15 +26,12 @@
   </div>
 
   <div class="relative">
-    <!-- 1200x700 대형 캔버스 -->
     <canvas id="gameCanvas" width="1200" height="700" class="bg-gray-950 border-4 border-gray-800 rounded-lg shadow-2xl cursor-crosshair max-w-full h-auto"></canvas>
 
-    <!-- 필살기 안내 팝업 -->
     <div id="fever-notice" class="hidden absolute bottom-6 left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-bold px-6 py-2 rounded-full text-sm animate-bounce shadow-xl border-2 border-yellow-200">
       ⚡ [SPACEBAR] 필살기 사용 가능!
     </div>
 
-    <!-- 시작 화면 -->
     <div id="start-screen" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center rounded-lg p-6 text-center">
       <h1 class="text-3xl md:text-5xl font-bold text-red-500 mb-3 animate-pulse">😈 용사를 피해라!</h1>
       <p class="text-sm text-gray-300 mb-6">"넓어진 전장에서 강력한 필살기로 용사들을 격퇴하세요!"</p>
@@ -52,14 +48,12 @@
       </button>
     </div>
 
-    <!-- 레벨업 모달 -->
     <div id="level-modal" class="hidden absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg p-6">
       <h2 id="modal-title" class="text-2xl font-bold text-yellow-400 mb-1">🎉 LEVEL UP!</h2>
       <p id="modal-sub" class="text-xs text-gray-300 mb-4">스킬을 선택하세요!</p>
       <div id="option-container" class="space-y-3 w-full max-w-sm"></div>
     </div>
 
-    <!-- 게임 오버 모달 -->
     <div id="gameover-modal" class="hidden absolute inset-0 bg-black/90 flex flex-col items-center justify-center rounded-lg p-6 text-center">
       <div id="card-to-capture" class="bg-gray-900 pixel-box p-6 rounded-lg max-w-xs w-full mb-4">
         <h2 class="text-2xl font-bold text-red-500 mb-1">💀 마왕 봉인됨</h2>
@@ -80,22 +74,33 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let audioCtx = null;
     let bgmEnabled = true;
     let bgmInterval = null;
 
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
     function playBgmNote() {
-      if (!bgmEnabled || !isPlaying) return;
-      const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00];
-      const freq = notes[Math.floor(Math.random() * notes.length)];
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'square';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+      if (!bgmEnabled || !isPlaying || !audioCtx) return;
+      try {
+        const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00];
+        const freq = notes[Math.floor(Math.random() * notes.length)];
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+      } catch(e){}
     }
 
     function toggleBgm() {
@@ -104,13 +109,357 @@
     }
 
     function playSfx(type) {
+      if (!audioCtx) return;
       if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      const now = audioCtx.currentTime;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
 
-      if (type === 'hit') {
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
-        gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
-        osc.start(now); osc.stop(now
+        if (type === 'hit') {
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+          gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+          osc.start(now); osc.stop(now + 0.08);
+        } else if (type === 'ultimate') {
+          osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.5);
+          gain.gain.setValueAtTime(0.35, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+          osc.start(now); osc.stop(now + 0.5);
+        } else if (type === 'levelup') {
+          osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.setValueAtTime(600, now + 0.12);
+          gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now); osc.stop(now + 0.25);
+        }
+      } catch(e){}
+    }
+
+    let isPlaying = false;
+    let keys = {};
+    let gameTime = 0, gameTimer = null, kills = 0, shakeTime = 0;
+    let ultimateGauge = 0;
+
+    let player = {
+      x: 600, y: 350, radius: 18, hp: 300, maxHp: 300, speed: 4.0,
+      level: 1, exp: 0, maxExp: 6, shockwaveCd: 0
+    };
+
+    let weapons = {
+      sickle: { level: 1, maxLevel: 5, angle: 0 },
+      fireball: { level: 0, maxLevel: 5, timer: 0 },
+      shield: { level: 0, maxLevel: 5 },
+      speed: { level: 0, maxLevel: 5 },
+      gigaSickle: { active: false },
+      hyperAura: { active: false }
+    };
+
+    let enemies = [], expOrbs = [], particles = [], fireballs = [], damageTexts = [], items = [];
+
+    window.addEventListener('keydown', e => {
+      keys[e.code] = true;
+      if (e.code === 'Space' && ultimateGauge >= 100 && isPlaying) useUltimateSkill();
+    });
+    window.addEventListener('keyup', e => keys[e.code] = false);
+    canvas.addEventListener('mousedown', () => {
+      if (isPlaying && player.shockwaveCd <= 0) triggerShockwave();
+    });
+
+    function startGame() {
+      initAudio();
+      document.getElementById('start-screen').classList.add('hidden');
+      resetVariables();
+      isPlaying = true;
+      if (gameTimer) clearInterval(gameTimer);
+      if (bgmInterval) clearInterval(bgmInterval);
+      gameTimer = setInterval(() => { gameTime++; updateTimerUi(); }, 1000);
+      bgmInterval = setInterval(playBgmNote, 200);
+      requestAnimationFrame(gameLoop);
+    }
+
+    function resetVariables() {
+      player = { x: 600, y: 350, radius: 18, hp: 300, maxHp: 300, speed: 4.0, level: 1, exp: 0, maxExp: 6, shockwaveCd: 0 };
+      weapons = { sickle: { level: 1, maxLevel: 5, angle: 0 }, fireball: { level: 0, maxLevel: 5, timer: 0 }, shield: { level: 0, maxLevel: 5 }, speed: { level: 0, maxLevel: 5 }, gigaSickle: { active: false }, hyperAura: { active: false } };
+      enemies = []; expOrbs = []; particles = []; fireballs = []; damageTexts = []; items = [];
+      gameTime = 0; kills = 0; ultimateGauge = 0; updateUi();
+    }
+
+    function updateTimerUi() {
+      const m = String(Math.floor(gameTime / 60)).padStart(2, '0');
+      const s = String(gameTime % 60).padStart(2, '0');
+      document.getElementById('time-text').innerText = `${m}:${s}`;
+    }
+
+    function updateUi() {
+      document.getElementById('hp-text').innerText = `${Math.ceil(player.hp)}/${player.maxHp}`;
+      document.getElementById('level-text').innerText = player.level;
+      document.getElementById('kill-text').innerText = kills;
+
+      if (ultimateGauge >= 100) {
+        document.getElementById('fever-notice').classList.remove('hidden');
+      } else {
+        document.getElementById('fever-notice').classList.add('hidden');
+      }
+    }
+
+    function spawnDamageText(x, y, text, color = '#facc15', scale = 1) {
+      damageTexts.push({ x, y, text, color, scale, life: 30, vy: -1.5 });
+    }
+
+    function useUltimateSkill() {
+      ultimateGauge = 0;
+      shakeTime = 30;
+      playSfx('ultimate');
+      updateUi();
+
+      spawnDamageText(600, 280, "⚡ 필살기 발동!!!", "#f59e0b", 3.2);
+
+      enemies.forEach(e => {
+        e.hp -= 250;
+        const angle = Math.atan2(e.y - player.y, e.x - player.x);
+        e.x += Math.cos(angle) * 400;
+        e.y += Math.sin(angle) * 400;
+      });
+    }
+
+    function triggerShockwave() {
+      player.shockwaveCd = 120;
+      shakeTime = 10;
+      playSfx('hit');
+
+      for (let i = 0; i < 30; i++) {
+        const pAngle = (Math.PI * 2 / 30) * i;
+        particles.push({ x: player.x, y: player.y, vx: Math.cos(pAngle)*9, vy: Math.sin(pAngle)*9, life: 20, color: '#ef4444', size: 4 });
+      }
+      enemies.forEach(e => {
+        const dist = Math.hypot(e.x - player.x, e.y - player.y);
+        if (dist < 180) {
+          e.hp -= 100;
+          spawnDamageText(e.x, e.y - 10, "100!", "#ef4444", 1.5);
+          e.x += (e.x - player.x)/dist * 70;
+          e.y += (e.y - player.y)/dist * 70;
+        }
+      });
+    }
+
+    function spawnEnemy() {
+      if (enemies.length > 70) return;
+      let x, y;
+      if (Math.random() < 0.5) { x = Math.random() < 0.5 ? -20 : 1220; y = Math.random() * 700; }
+      else { x = Math.random() * 1200; y = Math.random() < 0.5 ? -20 : 720; }
+      enemies.push({ x, y, radius: 12, hp: 6 + gameTime*0.05, maxHp: 6 + gameTime*0.05, speed: 1.0 + Math.random()*0.5 });
+    }
+
+    function gameLoop() {
+      if (!isPlaying) return;
+
+      ctx.save();
+      if (shakeTime > 0) {
+        shakeTime--;
+        ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      let dx = 0, dy = 0;
+      if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+      if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+      if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+      if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+      if (dx !== 0 && dy !== 0) { dx *= 0.7071; dy *= 0.7071; }
+
+      const currentSpeed = player.speed + (weapons.speed.level * 0.4);
+      player.x = Math.max(player.radius, Math.min(1200 - player.radius, player.x + dx * currentSpeed));
+      player.y = Math.max(player.radius, Math.min(700 - player.radius, player.y + dy * currentSpeed));
+
+      if (player.shockwaveCd > 0) player.shockwaveCd--;
+
+      if (Math.random() < 0.05) spawnEnemy();
+
+      if (weapons.sickle.level > 0 || weapons.gigaSickle.active) {
+        const isEvo = weapons.gigaSickle.active;
+        const count = isEvo ? 4 : (1 + Math.floor(weapons.sickle.level / 2));
+        const rotSpeed = isEvo ? 0.09 : 0.05;
+        const orbitRadius = isEvo ? 105 : 75;
+        const sickleSize = isEvo ? 24 : 14;
+        weapons.sickle.angle += rotSpeed;
+
+        ctx.shadowBlur = isEvo ? 20 : 10;
+        ctx.shadowColor = isEvo ? '#f59e0b' : '#38bdf8';
+
+        for (let i = 0; i < count; i++) {
+          const a = weapons.sickle.angle + (Math.PI * 2 / count) * i;
+          const sx = player.x + Math.cos(a) * orbitRadius;
+          const sy = player.y + Math.sin(a) * orbitRadius;
+
+          ctx.fillStyle = isEvo ? '#f59e0b' : '#38bdf8';
+          ctx.beginPath(); ctx.arc(sx, sy, sickleSize, 0, Math.PI*2); ctx.fill();
+
+          enemies.forEach(e => {
+            if (Math.hypot(e.x - sx, e.y - sy) < e.radius + sickleSize) {
+              e.hp -= isEvo ? 6 : 2.5;
+              if (Math.random() < 0.2) spawnDamageText(e.x, e.y, "25", isEvo ? '#f59e0b' : '#38bdf8');
+            }
+          });
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      enemies.forEach((e, index) => {
+        const angle = Math.atan2(player.y - e.y, player.x - e.x);
+        e.x += Math.cos(angle) * e.speed;
+        e.y += Math.sin(angle) * e.speed;
+
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.fill();
+
+        if (Math.hypot(player.x - e.x, player.y - e.y) < player.radius + e.radius) {
+          player.hp -= 0.08;
+          updateUi();
+          if (player.hp <= 0) gameOver();
+        }
+
+        if (e.hp <= 0) {
+          kills++;
+          if (ultimateGauge < 100) ultimateGauge += 4;
+          expOrbs.push({ x: e.x, y: e.y });
+
+          if (Math.random() < 0.05) {
+            const type = Math.random() < 0.5 ? 'magnet' : 'heal';
+            items.push({ x: e.x, y: e.y, type });
+          }
+
+          enemies.splice(index, 1);
+          updateUi();
+        }
+      });
+
+      items.forEach((it, index) => {
+        ctx.font = '16px DungGeunMo';
+        ctx.fillText(it.type === 'magnet' ? '🧲' : '🧪', it.x - 8, it.y + 5);
+
+        if (Math.hypot(player.x - it.x, player.y - it.y) < player.radius + 15) {
+          if (it.type === 'magnet') {
+            spawnDamageText(player.x, player.y - 20, "MAGNET!", "#f59e0b", 1.5);
+            expOrbs.forEach(o => { o.x = player.x; o.y = player.y; });
+          } else {
+            player.hp = Math.min(player.maxHp, player.hp + 50);
+            spawnDamageText(player.x, player.y - 20, "+50 HP", "#22c55e", 1.5);
+            updateUi();
+          }
+          items.splice(index, 1);
+        }
+      });
+
+      damageTexts.forEach((dt, index) => {
+        dt.y += dt.vy; dt.life--;
+        ctx.font = `bold ${Math.floor(12 * dt.scale)}px DungGeunMo`;
+        ctx.fillStyle = dt.color;
+        ctx.fillText(dt.text, dt.x - 10, dt.y);
+        if (dt.life <= 0) damageTexts.splice(index, 1);
+      });
+
+      expOrbs.forEach((orb, index) => {
+        ctx.fillStyle = '#c084fc';
+        ctx.beginPath(); ctx.arc(orb.x, orb.y, 5, 0, Math.PI*2); ctx.fill();
+
+        if (Math.hypot(player.x - orb.x, player.y - orb.y) < player.radius + 25) {
+          player.exp++;
+          expOrbs.splice(index, 1);
+          if (player.exp >= player.maxExp) levelUp();
+        }
+      });
+
+      ctx.shadowBlur = 15; ctx.shadowColor = '#ef4444';
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(player.x - 5, player.y - 3, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(player.x + 5, player.y - 3, 3, 0, Math.PI*2); ctx.fill();
+
+      ctx.restore();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function levelUp() {
+      player.level++;
+      player.exp = 0;
+      player.maxExp = Math.floor(player.maxExp * 1.2);
+      playSfx('levelup');
+      isPlaying = false;
+
+      const modal = document.getElementById('level-modal');
+      const container = document.getElementById('option-container');
+      container.innerHTML = '';
+
+      const canEvoSickle = (weapons.sickle.level >= 5 && weapons.fireball.level >= 5 && !weapons.gigaSickle.active);
+      const canEvoAura = (weapons.shield.level >= 5 && weapons.speed.level >= 5 && !weapons.hyperAura.active);
+
+      if (canEvoSickle || canEvoAura) {
+        document.getElementById('modal-title').innerText = "🔥 퓨전 스킬 진화 가능!";
+        if (canEvoSickle) {
+          container.appendChild(createEvoBtn("💥 [진화] 돈가스 회오리", "마력 낫+화염구 퓨전!", () => { weapons.gigaSickle.active = true; playSfx('evo'); resumeGame(); }));
+        }
+        if (canEvoAura) {
+          container.appendChild(createEvoBtn("⚡ [진화] 벼락치기 오라", "보호막+속도 퓨전!", () => { weapons.hyperAura.active = true; playSfx('evo'); resumeGame(); }));
+        }
+      } else {
+        document.getElementById('modal-title').innerText = "🎉 LEVEL UP!";
+        const options = [
+          { name: "🪓 마력 낫 강화", desc: `LV.${weapons.sickle.level+1}`, action: () => weapons.sickle.level++ },
+          { name: "🔥 화염구 강화", desc: `LV.${weapons.fireball.level+1}`, action: () => weapons.fireball.level++ },
+          { name: "🛡️ 마왕의 보호막", desc: `LV.${weapons.shield.level+1}`, action: () => weapons.shield.level++ },
+          { name: "👟 신속의 장화", desc: `LV.${weapons.speed.level+1}`, action: () => weapons.speed.level++ }
+        ];
+        options.forEach(opt => {
+          const btn = document.createElement('button');
+          btn.className = "w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 text-left p-3 rounded transition-all";
+          btn.innerHTML = `<div class="font-bold text-yellow-300 text-sm">${opt.name}</div><div class="text-xs text-gray-400">${opt.desc}</div>`;
+          btn.onclick = () => { opt.action(); resumeGame(); };
+          container.appendChild(btn);
+        });
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function createEvoBtn(title, desc, onClick) {
+      const btn = document.createElement('button');
+      btn.className = "w-full evo-box text-left p-3 rounded transition-all transform hover:scale-105";
+      btn.innerHTML = `<div class="font-bold text-yellow-300 text-base">🔥 ${title}</div><div class="text-xs text-yellow-100">${desc}</div>`;
+      btn.onclick = onClick;
+      return btn;
+    }
+
+    function resumeGame() {
+      document.getElementById('level-modal').classList.add('hidden');
+      isPlaying = true;
+      requestAnimationFrame(gameLoop);
+    }
+
+    function gameOver() {
+      isPlaying = false;
+      if (gameTimer) clearInterval(gameTimer);
+      if (bgmInterval) clearInterval(bgmInterval);
+      document.getElementById('res-time').innerText = document.getElementById('time-text').innerText;
+      document.getElementById('res-kills').innerText = kills;
+      document.getElementById('res-level').innerText = `LV.${player.level}`;
+      document.getElementById('gameover-modal').classList.remove('hidden');
+    }
+
+    function resetGame() {
+      document.getElementById('gameover-modal').classList.add('hidden');
+      startGame();
+    }
+
+    function downloadScoreCard() {
+      const card = document.getElementById('card-to-capture');
+      html2canvas(card, { backgroundColor: '#050508' }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `마왕_봉인_기록.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    }
+  </script>
+</body>
+</html>
