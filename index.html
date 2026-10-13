@@ -1,949 +1,507 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>용사를 피해라! - Reverse Survivor</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- html2canvas for card export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- FontAwesome for retro icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;700;900&display=swap');
-        
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #0d0f18;
-            user-select: none;
-            overflow: hidden;
-        }
-        .pixel-font {
-            font-family: 'Press Start 2P', monospace;
-        }
-        canvas {
-            display: block;
-            image-rendering: pixelated;
-        }
-        /* Custom Glowing Card Animations */
-        .card-glow:hover {
-            box-shadow: 0 0 25px rgba(236, 72, 153, 0.6);
-            transform: translateY(-4px);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>용사를 피해라! - 리버스 뱀파이어 서바이버</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DungGeunMo&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'DungGeunMo', monospace;
+      background-color: #050508;
+      color: #fff;
+      overflow: hidden;
+      user-select: none;
+    }
+    .pixel-box {
+      border: 4px solid #ef4444;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    }
+    .evo-box {
+      border: 4px solid #f59e0b;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.8);
+      background: linear-gradient(135deg, #451a03, #78350f);
+    }
+  </style>
 </head>
-<body class="flex items-center justify-center min-h-screen text-white relative">
+<body class="flex flex-col items-center justify-center min-h-screen p-2">
 
-<div id="game-container" class="relative w-full h-screen max-w-6xl max-h-[900px] bg-slate-900 shadow-2xl rounded-2xl overflow-hidden border-2 border-purple-900/50 flex flex-col">
+  <!-- 게임 UI -->
+  <div class="w-full max-w-4xl flex justify-between items-center mb-2 px-4 text-xs md:text-sm">
+    <div class="flex gap-4">
+      <span class="text-red-400 font-bold">❤️ 체력: <span id="hp-text">100/100</span></span>
+      <span class="text-yellow-400 font-bold">⭐ 레벨: <span id="level-text">1</span></span>
+      <span class="text-purple-400 font-bold">💀 처치: <span id="kill-text">0</span></span>
+    </div>
+    <div class="text-gray-300 font-bold">⏱️ 생존 시간: <span id="time-text">00:00</span></div>
+  </div>
 
-    <!-- Top Status Bar HUD -->
-    <div class="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-slate-950/90 to-transparent pointer-events-none flex flex-col gap-2">
-        <!-- Level Bar -->
-        <div class="w-full flex items-center gap-3">
-            <span id="level-badge" class="px-3 py-1 bg-purple-700 text-purple-100 font-bold text-sm rounded-lg border border-purple-400 shadow-lg pixel-font">
-                LV. 1
-            </span>
-            <div class="flex-1 h-4 bg-slate-800/80 rounded-full overflow-hidden border border-slate-700/80 p-0.5">
-                <div id="exp-bar-fill" class="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 rounded-full transition-all duration-200" style="width: 0%"></div>
-            </div>
-        </div>
+  <!-- 캔버스 영역 -->
+  <div class="relative">
+    <canvas id="gameCanvas" width="800" height="500" class="bg-gray-950 border-4 border-gray-800 rounded-lg shadow-2xl cursor-crosshair"></canvas>
 
-        <!-- HUD Stats -->
-        <div class="flex justify-between items-center text-sm font-bold text-slate-200">
-            <!-- HP Bar -->
-            <div class="flex items-center gap-2 w-1/3">
-                <i class="fa-solid font-black fa-heart text-red-500 text-lg animate-pulse"></i>
-                <div class="flex-1 h-3 bg-slate-800 rounded-full overflow-hidden border border-red-900/60">
-                    <div id="hp-bar-fill" class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-150" style="width: 100%"></div>
-                </div>
-                <span id="hp-text" class="text-xs font-mono text-red-300">100/100</span>
-            </div>
+    <!-- 시작 화면 -->
+    <div id="start-screen" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center rounded-lg p-6 text-center">
+      <h1 class="text-3xl md:text-4xl font-bold text-red-500 mb-2 animate-pulse">😈 용사를 피해라! (VFX MAX)</h1>
+      <p class="text-xs text-gray-400 mb-6">"극강의 스킬 이펙트로 용사들을 초토화시키세요!"</p>
+      
+      <div class="bg-gray-900 border border-gray-700 p-4 rounded text-left text-xs space-y-2 mb-6 max-w-sm">
+        <p class="text-yellow-400 font-bold">🎮 조작법:</p>
+        <p>• 이동: <span class="text-white font-bold">W, A, S, D</span> / <span class="text-white font-bold">방향키</span></p>
+        <p>• 마왕 충격파: <span class="text-white font-bold">마우스 좌클릭</span> (화면 진동)</p>
+        <p class="text-red-400 font-bold mt-2">🔥 무기 조합 조합법:</p>
+        <p>• 낫(LV.5) + 화염구(LV.5) ➔ <span class="text-yellow-300 font-bold">돈가스 회오리</span></p>
+        <p>• 보호막(LV.5) + 속도(LV.5) ➔ <span class="text-yellow-300 font-bold">벼락치기 오라</span></p>
+      </div>
 
-            <!-- Timer -->
-            <div class="flex items-center gap-2 bg-slate-950/70 px-4 py-1.5 rounded-full border border-purple-500/30">
-                <i class="fa-regular fa-clock text-yellow-400"></i>
-                <span id="timer-text" class="pixel-font text-yellow-300 text-base">00:00</span>
-            </div>
-
-            <!-- Kill Count & Active Wave -->
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-1.5 text-pink-400">
-                    <i class="fa-solid fa-skull"></i>
-                    <span id="kill-text" class="font-mono text-base">0</span>
-                </div>
-                <div class="flex items-center gap-1 text-cyan-400 bg-slate-900/80 px-2 py-1 rounded border border-cyan-500/30 text-xs">
-                    <i class="fa-solid fa-bolt text-yellow-400"></i>
-                    <span id="wave-text">WAVE 1</span>
-                </div>
-            </div>
-        </div>
+      <button onclick="startGame()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3 rounded-lg text-base shadow-lg transition-all active:scale-95">
+        🔥 마왕 부활 (게임 시작)
+      </button>
     </div>
 
-    <!-- Main Game Canvas -->
-    <canvas id="gameCanvas" class="w-full h-full cursor-crosshair"></canvas>
-
-    <!-- Start Overlay -->
-    <div id="start-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center">
-        <div class="max-w-md w-full bg-slate-900/90 border-2 border-purple-500/40 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-            <div class="absolute -top-10 -left-10 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl"></div>
-            <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-pink-600/20 rounded-full blur-2xl"></div>
-
-            <div class="text-5xl text-purple-400 mb-3">
-                <i class="fa-solid fa-dragon animate-bounce"></i>
-            </div>
-            <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 mb-2">
-                용사를 피해라!
-            </h1>
-            <p class="text-xs text-purple-300/80 mb-6 pixel-font">REVERSE SURVIVOR</p>
-
-            <div class="text-slate-300 text-sm space-y-3 mb-8 text-left bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-                <p class="flex items-center gap-2"><i class="fa-solid fa-gamepad text-purple-400"></i> <span class="font-bold">이동:</span> WASD 또는 방향키</p>
-                <p class="flex items-center gap-2"><i class="fa-solid fa-hand-fist text-pink-400"></i> <span class="font-bold">전파 공격:</span> 마우스 좌클릭 (충전식)</p>
-                <p class="flex items-center gap-2"><i class="fa-solid fa-gem text-cyan-400"></i> <span class="font-bold">목표:</span> 마력 구슬을 모아 생존하고 강력해지세요!</p>
-            </div>
-
-            <button id="start-btn" class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-extrabold text-lg rounded-xl shadow-lg shadow-purple-600/40 transition active:scale-95 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-play"></i> 마왕님, 생존 시작!
-            </button>
-        </div>
+    <!-- 레벨업 모달 -->
+    <div id="level-modal" class="hidden absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg p-6">
+      <h2 id="modal-title" class="text-2xl font-bold text-yellow-400 mb-1">🎉 LEVEL UP!</h2>
+      <p id="modal-sub" class="text-xs text-gray-300 mb-4">새로운 마력을 습득하거나 스킬을 진화시키세요!</p>
+      <div id="option-container" class="space-y-3 w-full max-w-sm"></div>
     </div>
 
-    <!-- Level Up Selection Modal Overlay -->
-    <div id="levelup-modal" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-md z-40 flex flex-col items-center justify-center p-6">
-        <div class="text-center mb-6">
-            <span class="px-4 py-1 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-full text-xs font-bold pixel-font tracking-widest uppercase">Level Up!</span>
-            <h2 class="text-3xl font-black text-white mt-1">능력 강화 선택</h2>
-            <p class="text-slate-400 text-sm">마력을 하나 선택하여 능력을 부여하세요</p>
+    <!-- 게임 오버 모달 -->
+    <div id="gameover-modal" class="hidden absolute inset-0 bg-black/90 flex flex-col items-center justify-center rounded-lg p-6 text-center">
+      <div id="card-to-capture" class="bg-gray-900 pixel-box p-6 rounded-lg max-w-xs w-full mb-4">
+        <h2 class="text-2xl font-bold text-red-500 mb-1">💀 마왕 봉인됨</h2>
+        <p class="text-xs text-gray-400 mb-4">용사들의 협공에 패배했습니다...</p>
+        <div class="space-y-2 text-sm text-left border-y border-gray-800 py-3 my-2">
+          <p>⏱️ 버틴 시간: <span id="res-time" class="text-yellow-400 font-bold">00:00</span></p>
+          <p>💀 처치한 용사: <span id="res-kills" class="text-red-400 font-bold">0</span>명</p>
+          <p>⭐ 달성 레벨: <span id="res-level" class="text-purple-400 font-bold">LV.1</span></p>
+          <p>⚔️ 최종 무기: <span id="res-evo" class="text-yellow-300 font-bold">없음</span></p>
         </div>
-
-        <div id="upgrade-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl w-full">
-            <!-- Dynamic Upgrade Cards will be inserted here -->
-        </div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="downloadScoreCard()" class="bg-green-600 hover:bg-green-500 text-white font-bold px-4 py-2 rounded text-xs">📸 스코어 카드 저장</button>
+        <button onclick="resetGame()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded text-xs">🔄 다시 도전</button>
+      </div>
     </div>
+  </div>
 
-    <!-- Game Over Screen Modal Overlay -->
-    <div id="gameover-modal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-lg z-50 flex flex-col items-center justify-center p-6 overflow-y-auto">
-        
-        <!-- Printable Result Card Area -->
-        <div id="result-card" class="max-w-md w-full bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-purple-500/50 p-6 rounded-2xl shadow-2xl relative text-center">
-            <div class="absolute top-0 right-0 p-4 opacity-10">
-                <i class="fa-solid fa-skull-crossbones text-8xl text-purple-400"></i>
-            </div>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-            <div class="inline-block px-3 py-1 bg-red-500/20 border border-red-500/40 rounded-full text-red-400 text-xs font-bold mb-2">
-                GAME OVER
-            </div>
-            <h2 class="text-2xl font-black text-white mb-1">용사의 집단 공격에 전사함</h2>
-            <p class="text-xs text-slate-400 mb-6">최후의 마왕 전설 기록</p>
+    // 오디오 시스템
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSfx(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
 
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-3 gap-2 bg-slate-900/80 p-4 rounded-xl border border-slate-800 mb-6">
-                <div class="flex flex-col items-center">
-                    <span class="text-xs text-slate-400 mb-1">생존 시간</span>
-                    <span id="final-time" class="text-lg font-bold text-yellow-400 pixel-font">00:00</span>
-                </div>
-                <div class="flex flex-col items-center border-x border-slate-800">
-                    <span class="text-xs text-slate-400 mb-1">최종 레벨</span>
-                    <span id="final-level" class="text-lg font-bold text-purple-400 pixel-font">LV.1</span>
-                </div>
-                <div class="flex flex-col items-center">
-                    <span class="text-xs text-slate-400 mb-1">처치한 용사</span>
-                    <span id="final-kills" class="text-lg font-bold text-pink-400 pixel-font">0</span>
-                </div>
-            </div>
-
-            <div class="text-left text-xs text-slate-400 bg-purple-950/30 p-3 rounded-lg border border-purple-800/40 mb-2">
-                💬 <span class="italic text-purple-200" id="gameover-quote">"용사들의 수법이 너무 비겁했다..."</span>
-            </div>
-            <p class="text-[10px] text-slate-500 text-right">Game: 용사를 피해라! (Reverse Survivor)</p>
-        </div>
-
-        <!-- Game Over Action Buttons -->
-        <div class="mt-6 flex flex-col sm:flex-row gap-3 w-full max-w-md">
-            <button id="download-card-btn" class="flex-1 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-2 text-sm">
-                <i class="fa-solid fa-download text-pink-400"></i> 결과 카드 저장
-            </button>
-            <button id="restart-btn" class="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-xl shadow-lg shadow-purple-600/30 transition flex items-center justify-center gap-2 text-sm">
-                <i class="fa-solid fa-rotate-right"></i> 다시 도전
-            </button>
-        </div>
-    </div>
-
-</div>
-
-<script>
-// Web Audio API Sound Effects Generator
-class SoundController {
-    constructor() {
-        this.ctx = null;
+      if (type === 'hit') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now); osc.stop(now + 0.08);
+      } else if (type === 'levelup') {
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.setValueAtTime(600, now + 0.12);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now); osc.stop(now + 0.25);
+      } else if (type === 'evo') {
+        osc.type = 'square'; osc.frequency.setValueAtTime(400, now); osc.frequency.setValueAtTime(800, now + 0.15); osc.frequency.setValueAtTime(1200, now + 0.3);
+        gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+        osc.start(now); osc.stop(now + 0.5);
+      }
     }
 
-    init() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
-        }
+    // 상태 변수
+    let isPlaying = false;
+    let keys = {};
+    let mouse = { x: 0, y: 0 };
+    let gameTime = 0, gameTimer = null, kills = 0;
+    let shakeTime = 0; // 화면 진동 시간
+
+    let player = {
+      x: 400, y: 250, radius: 16, hp: 100, maxHp: 100, speed: 3.2,
+      level: 1, exp: 0, maxExp: 10, shockwaveCd: 0
+    };
+
+    let weapons = {
+      sickle: { level: 1, maxLevel: 5, angle: 0 },
+      fireball: { level: 0, maxLevel: 5, timer: 0 },
+      shield: { level: 0, maxLevel: 5 },
+      speed: { level: 0, maxLevel: 5 },
+      gigaSickle: { active: false },
+      hyperAura: { active: false }
+    };
+
+    let enemies = [], expOrbs = [], particles = [], fireballs = [], damageTexts = [];
+
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+    });
+    canvas.addEventListener('mousedown', () => {
+      if (isPlaying && player.shockwaveCd <= 0) triggerShockwave();
+    });
+
+    function startGame() {
+      document.getElementById('start-screen').classList.add('hidden');
+      resetVariables();
+      isPlaying = true;
+      gameTimer = setInterval(() => { gameTime++; updateTimerUi(); }, 1000);
+      requestAnimationFrame(gameLoop);
     }
 
-    playAttack() {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.15);
+    function resetVariables() {
+      player = { x: 400, y: 250, radius: 16, hp: 100, maxHp: 100, speed: 3.2, level: 1, exp: 0, maxExp: 10, shockwaveCd: 0 };
+      weapons = { sickle: { level: 1, maxLevel: 5, angle: 0 }, fireball: { level: 0, maxLevel: 5, timer: 0 }, shield: { level: 0, maxLevel: 5 }, speed: { level: 0, maxLevel: 5 }, gigaSickle: { active: false }, hyperAura: { active: false } };
+      enemies = []; expOrbs = []; particles = []; fireballs = []; damageTexts = [];
+      gameTime = 0; kills = 0; updateUi();
     }
 
-    playExp() {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.08);
-        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.08);
+    function updateTimerUi() {
+      const m = String(Math.floor(gameTime / 60)).padStart(2, '0');
+      const s = String(gameTime % 60).padStart(2, '0');
+      document.getElementById('time-text').innerText = `${m}:${s}`;
     }
 
-    playHit() {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(120, this.ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(40, this.ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.1);
+    function updateUi() {
+      document.getElementById('hp-text').innerText = `${Math.ceil(player.hp)}/${player.maxHp}`;
+      document.getElementById('level-text').innerText = player.level;
+      document.getElementById('kill-text').innerText = kills;
     }
 
-    playLevelUp() {
-        if (!this.ctx) return;
-        const notes = [400, 523.25, 659.25, 783.99, 1046.50];
-        notes.forEach((freq, idx) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.06);
-            gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.06);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.06 + 0.15);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start(this.ctx.currentTime + idx * 0.06);
-            osc.stop(this.ctx.currentTime + idx * 0.06 + 0.15);
+    function spawnDamageText(x, y, text, color = '#facc15', scale = 1) {
+      damageTexts.push({ x, y, text, color, scale, life: 30, vy: -1.5 });
+    }
+
+    function triggerShockwave() {
+      player.shockwaveCd = 180;
+      shakeTime = 12; // 화면 강한 진동
+      playSfx('hit');
+
+      for (let i = 0; i < 35; i++) {
+        const pAngle = (Math.PI * 2 / 35) * i;
+        particles.push({
+          x: player.x, y: player.y,
+          vx: Math.cos(pAngle)*9, vy: Math.sin(pAngle)*9,
+          life: 25, color: '#ef4444', size: 4
         });
-    }
-
-    playGameOver() {
-        if (!this.ctx) return;
-        const notes = [300, 260, 220, 150];
-        notes.forEach((freq, idx) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.18);
-            gain.gain.setValueAtTime(0.2, this.ctx.currentTime + idx * 0.18);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.18 + 0.25);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start(this.ctx.currentTime + idx * 0.18);
-            osc.stop(this.ctx.currentTime + idx * 0.18 + 0.25);
-        });
-    }
-}
-
-const sounds = new SoundController();
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-let gameWidth = 0;
-let gameHeight = 0;
-
-function resizeCanvas() {
-    const container = document.getElementById('game-container');
-    gameWidth = container.clientWidth;
-    gameHeight = container.clientHeight;
-    canvas.width = gameWidth;
-    canvas.height = gameHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-const keys = {};
-const mouse = { x: 0, y: 0, clicked: false };
-
-window.addEventListener('keydown', e => {
-    keys[e.key.toLowerCase()] = true;
-});
-window.addEventListener('keyup', e => {
-    keys[e.key.toLowerCase()] = false;
-});
-canvas.addEventListener('mousemove', e => {
-    const rect = canvas.getBoundingClientRect();
-    mouse.x = e.clientX - rect.left;
-    mouse.y = e.clientY - rect.top;
-});
-canvas.addEventListener('mousedown', e => {
-    if (e.button === 0) mouse.clicked = true;
-});
-
-let isGameRunning = false;
-let isPaused = false;
-let gameTime = 0;
-let kills = 0;
-let level = 1;
-let currentExp = 0;
-let expToNextLevel = 10;
-
-let player;
-let enemies = [];
-let expOrbs = [];
-let particles = [];
-let projectiles = [];
-let scytheAngle = 0;
-
-let autoFireballTimer = 0;
-let shockwaveCooldown = 0;
-
-const UPGRADE_POOL = [
-    {
-        id: 'speed',
-        title: '신속의 축복',
-        desc: '이동 속도가 15% 증가합니다.',
-        icon: 'fa-person-running',
-        color: 'text-green-400',
-        apply: () => { player.speed *= 1.15; }
-    },
-    {
-        id: 'scythe',
-        title: '회전 마력 낫',
-        desc: '주위를 도는 회전 낫의 개수를 +1 추가합니다.',
-        icon: 'fa-dharmachakra',
-        color: 'text-purple-400',
-        apply: () => { player.scytheCount += 1; }
-    },
-    {
-        id: 'fireball',
-        title: '화염구 연사',
-        desc: '주기적으로 자동 발사되는 화염구를 추가합니다.',
-        icon: 'fa-fire',
-        color: 'text-red-400',
-        apply: () => { player.fireballCount += 1; }
-    },
-    {
-        id: 'heal',
-        title: '생명력 회복',
-        desc: '체력을 즉시 40% 회복하고 최대 체력을 늘립니다.',
-        icon: 'fa-heart-pulse',
-        color: 'text-pink-400',
-        apply: () => { 
-            player.maxHp += 20; 
-            player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.4); 
+      }
+      enemies.forEach(e => {
+        const dist = Math.hypot(e.x - player.x, e.y - player.y);
+        if (dist < 140) {
+          e.hp -= 40;
+          spawnDamageText(e.x, e.y - 10, "40!", "#ef4444", 1.4);
+          e.x += (e.x - player.x)/dist * 50;
+          e.y += (e.y - player.y)/dist * 50;
         }
-    },
-    {
-        id: 'magnet',
-        title: '마력 끌당 (자석)',
-        desc: '마력 구슬을 흡수하는 범위를 35% 늘립니다.',
-        icon: 'fa-magnet',
-        color: 'text-cyan-400',
-        apply: () => { player.magnetRadius *= 1.35; }
-    },
-    {
-        id: 'damage',
-        title: '위력 증대',
-        desc: '모든 공격의 데미지가 20% 증가합니다.',
-        icon: 'fa-burst',
-        color: 'text-yellow-400',
-        apply: () => { player.damageMultiplier *= 1.2; }
-    }
-];
-
-class Player {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = 18;
-        this.speed = 3.2;
-        this.hp = 100;
-        this.maxHp = 100;
-        this.scytheCount = 1;
-        this.fireballCount = 1;
-        this.magnetRadius = 90;
-        this.damageMultiplier = 1.0;
-        this.hitFlicker = 0;
+      });
     }
 
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-
-        if (this.hitFlicker > 0) {
-            ctx.globalAlpha = 0.6;
-            this.hitFlicker--;
-        }
-
-        // Magnet Aura Circle
-        ctx.beginPath();
-        ctx.arc(0, 0, this.magnetRadius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(168, 85, 247, 0.04)';
-        ctx.fill();
-
-        // Demon Slime Body
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, this.radius);
-        grad.addColorStop(0, '#c084fc');
-        grad.addColorStop(1, '#7e22ce');
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#e9d5ff';
-        ctx.stroke();
-
-        // Horns
-        ctx.fillStyle = '#f43f5e';
-        ctx.beginPath();
-        ctx.moveTo(-10, -10);
-        ctx.lineTo(-14, -22);
-        ctx.lineTo(-4, -14);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(10, -10);
-        ctx.lineTo(14, -22);
-        ctx.lineTo(4, -14);
-        ctx.fill();
-
-        // Eyes
-        ctx.fillStyle = '#fef08a';
-        ctx.beginPath();
-        ctx.arc(-6, -2, 4, 0, Math.PI * 2);
-        ctx.arc(6, -2, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(-6, -2, 2, 0, Math.PI * 2);
-        ctx.arc(6, -2, 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
+    function spawnEnemy() {
+      if (enemies.length > 90) return;
+      let x, y;
+      if (Math.random() < 0.5) { x = Math.random() < 0.5 ? -20 : 820; y = Math.random() * 500; }
+      else { x = Math.random() * 800; y = Math.random() < 0.5 ? -20 : 520; }
+      enemies.push({ x, y, radius: 12, hp: 15 + gameTime*0.2, maxHp: 15 + gameTime*0.2, speed: 1.2 + Math.random()*0.8 });
     }
 
-    update() {
-        let dx = 0;
-        let dy = 0;
+    function gameLoop() {
+      if (!isPlaying) return;
 
-        if (keys['w'] || keys['arrowup']) dy -= 1;
-        if (keys['s'] || keys['arrowdown']) dy += 1;
-        if (keys['a'] || keys['arrowleft']) dx -= 1;
-        if (keys['d'] || keys['arrowright']) dx += 1;
+      // 캔버스 초기화 & 화면 진동 적용
+      ctx.save();
+      if (shakeTime > 0) {
+        shakeTime--;
+        const shakeX = (Math.random() - 0.5) * 8;
+        const shakeY = (Math.random() - 0.5) * 8;
+        ctx.translate(shakeX, shakeY);
+      }
 
-        if (dx !== 0 && dy !== 0) {
-            dx *= 0.7071;
-            dy *= 0.7071;
-        }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        this.x += dx * this.speed;
-        this.y += dy * this.speed;
+      // 플레이어 이동
+      let dx = 0, dy = 0;
+      if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+      if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+      if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+      if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+      if (dx !== 0 && dy !== 0) { dx *= 0.7071; dy *= 0.7071; }
 
-        // Keep inside canvas boundary
-        this.x = Math.max(this.radius, Math.min(gameWidth - this.radius, this.x));
-        this.y = Math.max(this.radius, Math.min(gameHeight - this.radius, this.y));
-    }
-}
+      const currentSpeed = player.speed + (weapons.speed.level * 0.4);
+      player.x = Math.max(player.radius, Math.min(800 - player.radius, player.x + dx * currentSpeed));
+      player.y = Math.max(player.radius, Math.min(500 - player.radius, player.y + dy * currentSpeed));
 
-class Enemy {
-    constructor(type) {
-        const margin = 50;
-        if (Math.random() < 0.5) {
-            this.x = Math.random() < 0.5 ? -margin : gameWidth + margin;
-            this.y = Math.random() * gameHeight;
-        } else {
-            this.x = Math.random() * gameWidth;
-            this.y = Math.random() < 0.5 ? -margin : gameHeight + margin;
-        }
+      if (player.shockwaveCd > 0) player.shockwaveCd--;
 
-        this.type = type; // 0: Knight, 1: Archer, 2: Giant Hero Boss
-        if (type === 0) {
-            this.radius = 14;
-            this.speed = 1.6 + Math.random() * 0.4;
-            this.hp = 18;
-            this.maxHp = 18;
-            this.damage = 8;
-            this.color = '#38bdf8';
-            this.expVal = 2;
-        } else if (type === 1) {
-            this.radius = 11;
-            this.speed = 2.4 + Math.random() * 0.5;
-            this.hp = 10;
-            this.maxHp = 10;
-            this.damage = 5;
-            this.color = '#facc15';
-            this.expVal = 3;
-        } else {
-            this.radius = 26;
-            this.speed = 1.0;
-            this.hp = 120;
-            this.maxHp = 120;
-            this.damage = 22;
-            this.color = '#f43f5e';
-            this.expVal = 15;
-        }
-    }
+      if (Math.random() < 0.05 + (gameTime * 0.0005)) spawnEnemy();
 
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
+      // 1. 회전 낫 (글로우 이펙트 적용)
+      if (weapons.sickle.level > 0 || weapons.gigaSickle.active) {
+        const isEvo = weapons.gigaSickle.active;
+        const count = isEvo ? 4 : (1 + Math.floor(weapons.sickle.level / 2));
+        const rotSpeed = isEvo ? 0.09 : 0.05;
+        const orbitRadius = isEvo ? 90 : 65;
+        const sickleSize = isEvo ? 20 : 12;
+        weapons.sickle.angle += rotSpeed;
 
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#ffffff';
-        ctx.stroke();
+        ctx.shadowBlur = isEvo ? 20 : 10;
+        ctx.shadowColor = isEvo ? '#f59e0b' : '#38bdf8';
 
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(-this.radius * 0.5, -this.radius * 0.3, this.radius, this.radius * 0.4);
+        for (let i = 0; i < count; i++) {
+          const a = weapons.sickle.angle + (Math.PI * 2 / count) * i;
+          const sx = player.x + Math.cos(a) * orbitRadius;
+          const sy = player.y + Math.sin(a) * orbitRadius;
 
-        if (this.type === 2) {
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.fillRect(-20, -this.radius - 10, 40, 6);
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(-20, -this.radius - 10, (this.hp / this.maxHp) * 40, 6);
-        }
+          ctx.fillStyle = isEvo ? '#f59e0b' : '#38bdf8';
+          ctx.beginPath(); ctx.arc(sx, sy, sickleSize, 0, Math.PI*2); ctx.fill();
 
-        ctx.restore();
-    }
+          // 낫 잔상 파티클
+          particles.push({ x: sx, y: sy, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2, life: 8, color: ctx.shadowColor, size: 3 });
 
-    update() {
-        const angle = Math.atan2(player.y - this.y, player.x - this.x);
-        this.x += Math.cos(angle) * this.speed;
-        this.y += Math.sin(angle) * this.speed;
-    }
-}
-
-class Projectile {
-    constructor(x, y, targetX, targetY, speed, damage, radius, color) {
-        this.x = x;
-        this.y = y;
-        const angle = Math.atan2(targetY - y, targetX - x);
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
-        this.damage = damage;
-        this.radius = radius;
-        this.color = color;
-        this.life = 180;
-    }
-
-    draw() {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 10;
-        ctx.fill();
-        ctx.restore();
-    }
-
-    update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life--;
-    }
-}
-
-class ExpOrb {
-    constructor(x, y, value) {
-        this.x = x;
-        this.y = y;
-        this.value = value;
-        this.radius = 5;
-    }
-
-    draw() {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#a855f7';
-        ctx.shadowColor = '#d8b4fe';
-        ctx.shadowBlur = 8;
-        ctx.fill();
-        ctx.restore();
-    }
-
-    update() {
-        const dist = Math.hypot(player.x - this.x, player.y - this.y);
-        if (dist < player.magnetRadius) {
-            const angle = Math.atan2(player.y - this.y, player.x - this.x);
-            const pullSpeed = 6;
-            this.x += Math.cos(angle) * pullSpeed;
-            this.y += Math.sin(angle) * pullSpeed;
-        }
-    }
-}
-
-class Particle {
-    constructor(x, y, color) {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.radius = Math.random() * 3 + 1;
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 4 + 1;
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
-        this.alpha = 1;
-        this.decay = Math.random() * 0.03 + 0.02;
-    }
-
-    draw() {
-        ctx.save();
-        ctx.globalAlpha = this.alpha;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.restore();
-    }
-
-    update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.alpha -= this.decay;
-    }
-}
-
-function spawnHitParticles(x, y, color, count = 8) {
-    for (let i = 0; i < count; i++) {
-        particles.push(new Particle(x, y, color));
-    }
-}
-
-function initGame() {
-    sounds.init();
-    player = new Player(gameWidth / 2, gameHeight / 2);
-    enemies = [];
-    expOrbs = [];
-    particles = [];
-    projectiles = [];
-    gameTime = 0;
-    kills = 0;
-    level = 1;
-    currentExp = 0;
-    expToNextLevel = 10;
-    shockwaveCooldown = 0;
-    scytheAngle = 0;
-
-    updateUI();
-    document.getElementById('start-overlay').classList.add('hidden');
-    document.getElementById('gameover-modal').classList.add('hidden');
-    document.getElementById('levelup-modal').classList.add('hidden');
-
-    isGameRunning = true;
-    isPaused = false;
-}
-
-function spawnEnemyWave() {
-    if (!isGameRunning || isPaused) return;
-
-    const count = Math.floor(1 + gameTime / 25);
-
-    for (let i = 0; i < count; i++) {
-        const rand = Math.random();
-        let type = 0;
-        if (gameTime > 20 && rand < 0.35) type = 1;
-        if (gameTime > 45 && rand < 0.1) type = 2;
-
-        enemies.push(new Enemy(type));
-    }
-}
-
-let enemySpawnTimer = 0;
-
-function gameLoop() {
-    requestAnimationFrame(gameLoop);
-
-    if (!isGameRunning || isPaused) return;
-
-    gameTime += 1 / 60;
-    shockwaveCooldown = Math.max(0, shockwaveCooldown - 1);
-    autoFireballTimer += 1;
-
-    enemySpawnTimer += 1 / 60;
-    if (enemySpawnTimer > 1.2) {
-        spawnEnemyWave();
-        enemySpawnTimer = 0;
-    }
-
-    if (autoFireballTimer > 90 / player.fireballCount) {
-        autoFireballTimer = 0;
-        if (enemies.length > 0) {
-            let closest = enemies[0];
-            let minDist = Math.hypot(enemies[0].x - player.x, enemies[0].y - player.y);
-            for (let i = 1; i < enemies.length; i++) {
-                const d = Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y);
-                if (d < minDist) {
-                    minDist = d;
-                    closest = enemies[i];
-                }
+          enemies.forEach(e => {
+            if (Math.hypot(e.x - sx, e.y - sy) < e.radius + sickleSize) {
+              const dmg = isEvo ? 3 : 1;
+              e.hp -= dmg;
+              if (Math.random() < 0.3) spawnDamageText(e.x, e.y, Math.floor(dmg*10), isEvo ? '#f59e0b' : '#38bdf8');
             }
-            projectiles.push(new Projectile(
-                player.x, player.y, 
-                closest.x, closest.y, 
-                7, 20 * player.damageMultiplier, 
-                6, '#f97316'
-            ));
-            sounds.playAttack();
+          });
         }
-    }
+        ctx.shadowBlur = 0;
+      }
 
-    if (mouse.clicked && shockwaveCooldown <= 0) {
-        mouse.clicked = false;
-        shockwaveCooldown = 60;
-        sounds.playAttack();
+      // 2. 벼락치기 오라
+      if (weapons.hyperAura.active) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#eab308';
+        ctx.strokeStyle = 'rgba(234, 179, 8, 0.6)';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(player.x, player.y, 115, 0, Math.PI*2); ctx.stroke();
+        ctx.shadowBlur = 0;
 
-        spawnHitParticles(player.x, player.y, '#ec4899', 24);
-
-        enemies.forEach(enemy => {
-            const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
-            if (dist < 120) {
-                enemy.hp -= 35 * player.damageMultiplier;
-                const angle = Math.atan2(enemy.y - player.y, enemy.x - player.x);
-                enemy.x += Math.cos(angle) * 30;
-                enemy.y += Math.sin(angle) * 30;
-                spawnHitParticles(enemy.x, enemy.y, '#f43f5e', 8);
-            }
+        enemies.forEach(e => {
+          if (Math.hypot(e.x - player.x, e.y - player.y) < 115) {
+            e.hp -= 1.5;
+            if (Math.random() < 0.1) spawnDamageText(e.x, e.y, "15", '#eab308');
+          }
         });
-    }
-    mouse.clicked = false;
+      }
 
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, gameWidth, gameHeight);
+      // 3. 화염구
+      if (weapons.fireball.level > 0 && !weapons.gigaSickle.active) {
+        weapons.fireball.timer++;
+        if (weapons.fireball.timer > 90 - weapons.fireball.level * 10) {
+          weapons.fireball.timer = 0;
+          let nearest = null, minDist = 999;
+          enemies.forEach(e => {
+            const d = Math.hypot(e.x - player.x, e.y - player.y);
+            if (d < minDist) { minDist = d; nearest = e; }
+          });
+          if (nearest) {
+            const angle = Math.atan2(nearest.y - player.y, nearest.x - player.x);
+            fireballs.push({ x: player.x, y: player.y, vx: Math.cos(angle)*7, vy: Math.sin(angle)*7, life: 80 });
+          }
+        }
+      }
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-    ctx.lineWidth = 1;
-    const gridSize = 40;
-    for (let x = 0; x < gameWidth; x += gridSize) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, gameHeight); ctx.stroke();
-    }
-    for (let y = 0; y < gameHeight; y += gridSize) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(gameWidth, y); ctx.stroke();
-    }
+      fireballs.forEach((fb, index) => {
+        fb.x += fb.vx; fb.y += fb.vy; fb.life--;
+        ctx.shadowBlur = 12; ctx.shadowColor = '#ef4444';
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath(); ctx.arc(fb.x, fb.y, 9, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
 
-    player.update();
-    player.draw();
+        // 불꽃 꼬리 파티클
+        particles.push({ x: fb.x, y: fb.y, vx: -fb.vx*0.2, vy: -fb.vy*0.2, life: 10, color: '#f97316', size: 4 });
 
-    scytheAngle += 0.04;
-    const scytheRadius = 65;
-    for (let i = 0; i < player.scytheCount; i++) {
-        const curAngle = scytheAngle + (Math.PI * 2 / player.scytheCount) * i;
-        const sx = player.x + Math.cos(curAngle) * scytheRadius;
-        const sy = player.y + Math.sin(curAngle) * scytheRadius;
+        enemies.forEach(e => {
+          if (Math.hypot(e.x - fb.x, e.y - fb.y) < e.radius + 9) {
+            e.hp -= 25;
+            spawnDamageText(e.x, e.y, "25!", '#ef4444', 1.2);
+            fb.life = 0;
+            // 폭발 스파크 생성
+            for (let k = 0; k < 10; k++) {
+              particles.push({ x: fb.x, y: fb.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, life: 15, color: '#f97316', size: 3 });
+            }
+          }
+        });
+        if (fb.life <= 0) fireballs.splice(index, 1);
+      });
 
-        ctx.save();
-        ctx.translate(sx, sy);
-        ctx.rotate(curAngle + Math.PI / 2);
+      // 적 업데이트 & 사망 폭발
+      enemies.forEach((e, index) => {
+        const angle = Math.atan2(player.y - e.y, player.x - e.x);
+        e.x += Math.cos(angle) * e.speed;
+        e.y += Math.sin(angle) * e.speed;
+
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.fill();
+
+        if (Math.hypot(player.x - e.x, player.y - e.y) < player.radius + e.radius) {
+          const dmgReduce = weapons.shield.level * 0.15;
+          player.hp -= (0.5 * (1 - dmgReduce));
+          updateUi();
+          if (player.hp <= 0) gameOver();
+        }
+
+        if (e.hp <= 0) {
+          kills++;
+          expOrbs.push({ x: e.x, y: e.y });
+          // 용사 사망 시 녹색 피 파티클
+          for (let p = 0; p < 8; p++) {
+            particles.push({ x: e.x, y: e.y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 15, color: '#22c55e', size: 3 });
+          }
+          enemies.splice(index, 1);
+          updateUi();
+        }
+      });
+
+      // 파티클 시스템 렌더링
+      particles.forEach((p, index) => {
+        p.x += p.vx; p.y += p.vy; p.life--;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size || 2, 0, Math.PI*2); ctx.fill();
+        if (p.life <= 0) particles.splice(index, 1);
+      });
+
+      // 데미지 텍스트 렌더링
+      damageTexts.forEach((dt, index) => {
+        dt.y += dt.vy; dt.life--;
+        ctx.font = `bold ${Math.floor(12 * dt.scale)}px DungGeunMo`;
+        ctx.fillStyle = dt.color;
+        ctx.fillText(dt.text, dt.x - 10, dt.y);
+        if (dt.life <= 0) damageTexts.splice(index, 1);
+      });
+
+      // 마력 구슬
+      expOrbs.forEach((orb, index) => {
+        ctx.shadowBlur = 8; ctx.shadowColor = '#a855f7';
         ctx.fillStyle = '#c084fc';
-        ctx.beginPath();
-        ctx.arc(0, 0, 8, 0, Math.PI);
-        ctx.fill();
-        ctx.restore();
+        ctx.beginPath(); ctx.arc(orb.x, orb.y, 5, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
 
-        enemies.forEach(enemy => {
-            if (Math.hypot(enemy.x - sx, enemy.y - sy) < enemy.radius + 8) {
-                enemy.hp -= 1.2 * player.damageMultiplier;
-                spawnHitParticles(sx, sy, '#a855f7', 2);
-            }
+        if (Math.hypot(player.x - orb.x, player.y - orb.y) < player.radius + 15) {
+          player.exp++;
+          expOrbs.splice(index, 1);
+          if (player.exp >= player.maxExp) levelUp();
+        }
+      });
+
+      // 플레이어(마왕 슬라임)
+      ctx.shadowBlur = 15; ctx.shadowColor = '#ef4444';
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(player.x - 5, player.y - 3, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(player.x + 5, player.y - 3, 3, 0, Math.PI*2); ctx.fill();
+
+      ctx.restore(); // 화면 셰이크 끝
+      requestAnimationFrame(gameLoop);
+    }
+
+    function levelUp() {
+      player.level++;
+      player.exp = 0;
+      player.maxExp = Math.floor(player.maxExp * 1.3);
+      playSfx('levelup');
+      isPlaying = false;
+
+      const modal = document.getElementById('level-modal');
+      const container = document.getElementById('option-container');
+      container.innerHTML = '';
+
+      const canEvoSickle = (weapons.sickle.level >= 5 && weapons.fireball.level >= 5 && !weapons.gigaSickle.active);
+      const canEvoAura = (weapons.shield.level >= 5 && weapons.speed.level >= 5 && !weapons.hyperAura.active);
+
+      if (canEvoSickle || canEvoAura) {
+        document.getElementById('modal-title').innerText = "🔥 퓨전 스킬 진화 가능!";
+        document.getElementById('modal-title').className = "text-2xl font-bold text-yellow-400 mb-1 animate-bounce";
+
+        if (canEvoSickle) {
+          container.appendChild(createEvoBtn("💥 [진화] 돈가스 회오리", "마력 낫+화염구 퓨전! 네온 황금 회오리 낫", () => {
+            weapons.gigaSickle.active = true; playSfx('evo'); resumeGame();
+          }));
+        }
+        if (canEvoAura) {
+          container.appendChild(createEvoBtn("⚡ [진화] 벼락치기 오라", "보호막+속도 퓨전! 황금빛 지속 전자기장", () => {
+            weapons.hyperAura.active = true; playSfx('evo'); resumeGame();
+          }));
+        }
+      } else {
+        document.getElementById('modal-title').innerText = "🎉 LEVEL UP!";
+        document.getElementById('modal-title').className = "text-2xl font-bold text-yellow-400 mb-1";
+
+        const options = [
+          { name: "🪓 마력 낫 강화", desc: `현재 LV.${weapons.sickle.level} -> LV.${weapons.sickle.level+1}`, action: () => weapons.sickle.level++ },
+          { name: "🔥 화염구 습득/강화", desc: `현재 LV.${weapons.fireball.level} -> LV.${weapons.fireball.level+1}`, action: () => weapons.fireball.level++ },
+          { name: "🛡️ 마왕의 보호막", desc: `피해량 감소 (LV.${weapons.shield.level+1})`, action: () => weapons.shield.level++ },
+          { name: "👟 신속의 장화", desc: `이동속도 증가 (LV.${weapons.speed.level+1})`, action: () => weapons.speed.level++ }
+        ];
+
+        options.forEach(opt => {
+          const btn = document.createElement('button');
+          btn.className = "w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 text-left p-3 rounded transition-all";
+          btn.innerHTML = `<div class="font-bold text-yellow-300 text-sm">${opt.name}</div><div class="text-xs text-gray-400">${opt.desc}</div>`;
+          btn.onclick = () => { opt.action(); resumeGame(); };
+          container.appendChild(btn);
         });
+      }
+
+      modal.classList.remove('hidden');
     }
 
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-        const p = projectiles[i];
-        p.update();
-        p.draw();
-
-        for (let j = enemies.length - 1; j >= 0; j--) {
-            const e = enemies[j];
-            if (Math.hypot(e.x - p.x, e.y - p.y) < e.radius + p.radius) {
-                e.hp -= p.damage;
-                spawnHitParticles(p.x, p.y, '#f97316', 6);
-                projectiles.splice(i, 1);
-                break;
-            }
-        }
-
-        if (p.life <= 0) projectiles.splice(i, 1);
+    function createEvoBtn(title, desc, onClick) {
+      const btn = document.createElement('button');
+      btn.className = "w-full evo-box text-left p-3 rounded transition-all transform hover:scale-105";
+      btn.innerHTML = `<div class="font-bold text-yellow-300 text-base">🔥 ${title}</div><div class="text-xs text-yellow-100">${desc}</div>`;
+      btn.onclick = onClick;
+      return btn;
     }
 
-    for (let i = expOrbs.length - 1; i >= 0; i--) {
-        const orb = expOrbs[i];
-        orb.update();
-        orb.draw();
-
-        if (Math.hypot(player.x - orb.x, player.y - orb.y) < player.radius + orb.radius) {
-            currentExp += orb.value;
-            sounds.playExp();
-            expOrbs.splice(i, 1);
-
-            if (currentExp >= expToNextLevel) {
-                triggerLevelUp();
-            }
-        }
+    function resumeGame() {
+      document.getElementById('level-modal').classList.add('hidden');
+      isPlaying = true;
+      requestAnimationFrame(gameLoop);
     }
 
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i];
-        enemy.update();
-        enemy.draw();
+    function gameOver() {
+      isPlaying = false;
+      clearInterval(gameTimer);
 
-        if (Math.hypot(player.x - enemy.x, player.y - enemy.y) < player.radius + enemy.radius) {
-            player.hp -= enemy.damage * 0.05;
-            player.hitFlicker = 3;
-            sounds.playHit();
+      document.getElementById('res-time').innerText = document.getElementById('time-text').innerText;
+      document.getElementById('res-kills').innerText = kills;
+      document.getElementById('res-level').innerText = `LV.${player.level}`;
 
-            if (player.hp <= 0) {
-                gameOver();
-                return;
-            }
-        }
+      let evos = [];
+      if (weapons.gigaSickle.active) evos.push("돈가스 회오리");
+      if (weapons.hyperAura.active) evos.push("벼락치기 오라");
+      document.getElementById('res-evo').innerText = evos.length > 0 ? evos.join(', ') : '없음';
 
-        if (enemy.hp <= 0) {
-            kills++;
-            expOrbs.push(new ExpOrb(enemy.x, enemy.y, enemy.expVal));
-            spawnHitParticles(enemy.x, enemy.y, enemy.color, 12);
-            enemies.splice(i, 1);
-        }
+      document.getElementById('gameover-modal').classList.remove('hidden');
     }
 
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const pt = particles[i];
-        pt.update();
-        pt.draw();
-        if (pt.alpha <= 0) particles.splice(i, 1);
+    function resetGame() {
+      document.getElementById('gameover-modal').classList.add('hidden');
+      startGame();
     }
 
-    updateUI();
-}
-
-function triggerLevelUp() {
-    isPaused = true;
-    level++;
-    currentExp -= expToNextLevel;
-    expToNextLevel = Math.floor(expToNextLevel * 1.4);
-    sounds.playLevelUp();
-
-    const shuffled = [...UPGRADE_POOL].sort(() => 0.5 - Math.random());
-    const choices = shuffled.slice(0, 3);
-
-    const container = document.getElementById('upgrade-cards-container');
-    container.innerHTML = '';
-
-    choices.forEach(upgrade => {
-        const card = document.createElement('div');
-        card.className = 'bg-slate-900 border-2 border-slate-700/80 hover:border-purple-500 rounded-xl p-5 cursor-pointer transition-all duration-200 card-glow flex flex-col items-center text-center group';
-        card.innerHTML = `
-            <div class="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-2xl ${upgrade.color} mb-3 group-hover:scale-110 transition-transform">
-                <i class="fa-solid ${upgrade.icon}"></i>
-            </div>
-            <h3 class="text-lg font-bold text-white mb-1">${upgrade.title}</h3>
-            <p class="text-xs text-slate-400">${upgrade.desc}</p>
-        `;
-        card.onclick = () => {
-            upgrade.apply();
-            document.getElementById('levelup-modal').classList.add('hidden');
-            isPaused = false;
-        };
-        container.appendChild(card);
-    });
-
-    document.getElementById('levelup-modal').classList.remove('hidden');
-}
-
-function updateUI() {
-    document.getElementById('level-badge').innerText = `LV. ${level}`;
-    const expPercent = Math.min(100, (currentExp / expToNextLevel) * 100);
-    document.getElementById('exp-bar-fill').style.width = `${expPercent}%`;
-
-    const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
-    document.getElementById('hp-bar-fill').style.width = `${hpPercent}%`;
-    document.getElementById('hp-text').innerText = `${Math.ceil(player.hp)}/${player.maxHp}`;
-
-    const mins = Math.floor(gameTime / 60).toString().padStart(2, '0');
-    const secs = Math.floor(gameTime % 60).toString().padStart(2, '0');
-    document.getElementById('timer-text').innerText = `${mins}:${secs}`;
-
-    document.getElementById('kill-text').innerText = kills;
-    const currentWave = Math.floor(gameTime / 30) + 1;
-    document.getElementById('wave-text').innerText = `WAVE ${currentWave}`;
-}
-
-function gameOver() {
-    isGameRunning = false;
-    sounds.playGameOver();
-
-    const mins = Math.floor(gameTime / 60).toString().padStart(2, '0');
-    const secs = Math.floor(gameTime % 60).toString().padStart(2, '0');
-
-    document.getElementById('final-time').innerText = `${mins}:${secs}`;
-    document.getElementById('final-level').innerText = `LV.${level}`;
-    document.getElementById('final-kills').innerText = kills;
-
-    const quotes = [
-        "용사들의 다굴엔 장사가 없군요...",
-        "비겁한 용사들이 포션을 먹고 비볐습니다.",
-        "다음번엔 더 강력한 마법으로 복수하리라!",
-        "오늘의 생존 기록을 세상에 널리 알리세요!"
-    ];
-    document.getElementById('gameover-quote').innerText = `"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
-
-    document.getElementById('gameover-modal').classList.remove('hidden');
-}
-
-document.getElementById('download-card-btn').addEventListener('click', () => {
-    const cardNode = document.getElementById('result-card');
-    html2canvas(cardNode, {
-        backgroundColor: '#020617',
-        scale: 2
-    }).then(cardCanvas => {
+    function downloadScoreCard() {
+      const card = document.getElementById('card-to-capture');
+      html2canvas(card, { backgroundColor: '#050508' }).then(canvas => {
         const link = document.createElement('a');
-        link.download = `마왕생존기록_LV${level}_${kills}Kills.png`;
-        link.href = cardCanvas.toDataURL('image/png');
+        link.download = `마왕_봉인_기록.png`;
+        link.href = canvas.toDataURL();
         link.click();
-    });
-});
-
-document.getElementById('start-btn').addEventListener('click', () => {
-    initGame();
-});
-
-document.getElementById('restart-btn').addEventListener('click', () => {	
-   initGame();
-});
-
-window.onload = () => {
-    requestAnimationFrame(gameLoop);
-};
-</script>
+      });
+    }
+  </script>
 </body>
 </html>
